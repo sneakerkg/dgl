@@ -1,16 +1,14 @@
 from time import time
-
-import metis
 import numpy as np
 
+import dgl
 from utils import arg_list
 
 def get_partition_list(g, psize):
     tmp_time = time()
-    ng = g.to_networkx()
     print("getting adj using time{:.4f}".format(time() - tmp_time))
     print("run metis with partition size {}".format(psize))
-    _, nd_group = metis.part_graph(ng, psize)
+    nd_group = dgl.transform.metis_partition_assignment(g, psize)
     print("metis finished in {} seconds.".format(time() - tmp_time))
     print("train group {}".format(len(nd_group)))
     al = arg_list(nd_group)
