@@ -21,8 +21,12 @@ def parse_args():
     parser.add_argument('--num-workers', help='number of workers', type=int, default=0)
     parser.add_argument('--num-epochs', help='number of epochs', type=int)
 
-    args = parser.parse_args()
+    # model param
+    parser.add_argument('--hidden-dim', help='gcn hidden layer dimension', type=int, default=192)
+    parser.add_argument('--last-hidden-dim', help='last gcn hidden layer dimension', type=int, default=192)
+    parser.add_argument('--coord-dim', help='coordinate dimension', type=int, default=3)
 
+    args = parser.parse_args()
     return args
 
 
@@ -45,15 +49,15 @@ def main():
                                                collate_fn=get_shapenet_collate,
                                                shuffle=False)
 
-    for data in train_loader:
-        print (data)
-        exit (0)
-
-
-    exit(0)
-
     # Create model
-    model = Pixel2MeshModel(hidden_dim, last_hidden_dim, coord_dim, ellipsoid, camera_f, camera_c, mesh_pos, gconv_activation)
+    mesh_file = os.path.join(args.dataset_dir, 'ellipsoid/info_ellipsoid.dat')
+    ellipsoid = Ellipsoid(mesh_file)
+
+    model = Pixel2MeshModel(args.hidden_dim, args.last_hidden_dim, args.coord_dim, ellipsoid)
+
+    print (model)
+
+    exit (0)
 
     # Create loss
     loss = P2MLoss(option, eclipse)

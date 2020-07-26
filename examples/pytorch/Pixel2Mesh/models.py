@@ -40,12 +40,12 @@ class MeshBlock(nn.Module):
         self.activation = F.relu if activation else None
 
 class Pixel2MeshModel(nn.Module):
-    def __init__(self, hidden_dim, last_hidden_dim, coord_dim, ellipsoid, camera_f, camera_c, mesh_pos, gconv_activation):
+    def __init__(self, hidden_dim, last_hidden_dim, coord_dim, ellipsoid, camera_f=[248, 248], camera_c=[111.5, 111.5], mesh_pos=[0.0, 0.0, -0.8], gconv_activation=True):
         self.hidden_dim = hidden_dim
         self.coord_dim = coord_dim
         self.last_hidden_dim = last_hidden_dim
         self.init_pts = nn.Parameter(ellipsoid.coord, requires_grad=False)
-        self.gconv_activation = options.gconv_activation
+        self.gconv_activation = gconv_activation
 
         # perpare the image side backbone
         # NOTE: how to use this? What if we load from ckpt?
