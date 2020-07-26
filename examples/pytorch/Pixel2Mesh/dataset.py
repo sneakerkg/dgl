@@ -8,17 +8,10 @@ from PIL import Image
 from skimage import io, transform
 from torch.utils.data.dataloader import default_collate
 
-from datasets.base_dataset import BaseDataset
-
 from torch.utils.data.dataset import Dataset
 from torchvision.transforms import Normalize
 
-'''
-Part of the code are adapted from
-https://github.com/noahcao/Pixel2Mesh
-'''
-
-class ShapeNetDataset(BaseDataset):
+class ShapeNetDataset(Dataset):
     """
     Dataset wrapping images and target meshes for ShapeNet dataset.
     """
@@ -33,14 +26,18 @@ class ShapeNetDataset(BaseDataset):
         self.id_name_map = {k: i for i, k in enumerate(self.id_name_map)}
 
         # Read file list
-        with open(os.path.join(self.dataset_dir, "meta", file_list_name + ".txt"), "r") as fp:
+        print (file_list_path)
+        with open(file_list_path, "r") as fp:
             lines = fp.readlines()
             self.file_names = [line.strip() for line in lines]
 
         # Nomarlization params
         self.mesh_center = mesh_center
-        self.img_mean = img_mean
-        self.img_std = img_std
+        self.img_size = img_size
+        self.normalize_img = Normalize(mean=img_mean, std=img_std)
+
+    def __len__(self):
+        return len(self.file_names)
 
     def __getitem__(self, index):
         filename = self.file_names[index][17:]
@@ -57,7 +54,7 @@ class ShapeNetDataset(BaseDataset):
         img = transform.resize(img, (self.img_size, self.img_size))
         img = img[:, :, :3].astype(np.float32)
         # align points and mesh center
-        pts -= np.array(self.mesh_pos)
+        pts -= np.array(self.mesh_center)
         assert pts.shape[0] == normals.shape[0]
         length = pts.shape[0]
         # normalize image
@@ -69,7 +66,39 @@ class ShapeNetDataset(BaseDataset):
             "images_orig": img,
             "points": pts,
             "normals": normals,
-            "labels": self.labels_map[label],
+            "labels": self.id_name_map[label],
             "filename": filename,
             "length": length
         }
+
+def get_shapenet_collate(num_points):
+    """
+    :param num_points: This option will not be activated when batch size = 1
+    :return: shapenet_collate function
+    """
+    def shapenet_collate(batch):
+        if len(batch) > 1:
+            all_equal = True
+            for t in batch:
+                if t["length"] != batch[0]["length"]:
+                    all_equal = False
+                    break
+            points_orig, normals_orig = [], []
+            if not all_equal:
+                for t in batch:
+                    pts, normal = t["points"], t["normals"]
+                    length = pts.shape[0]
+                    choices = np.resize(np.random.permutation(length), num_points)
+                    t["points"], t["normals"] = pts[choices], normal[choices]
+                    points_orig.append(torch.from_numpy(pts))
+                    normals_orig.append(torch.from_numpy(normal))
+                ret = default_collate(batch)
+                ret["points_orig"] = points_orig
+                ret["normals_orig"] = normals_orig
+                return ret
+        ret = default_collate(batch)
+        ret["points_orig"] = ret["points"]
+        ret["normals_orig"] = ret["normals"]
+        return ret
+
+    return shapenet_collate

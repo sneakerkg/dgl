@@ -74,6 +74,7 @@ class Pixel2MeshModel(nn.Module):
         self.gconv = GCNLayer(in_features=self.last_hidden_dim, out_features=self.coord_dim,
                            graph=ellipsoid.dgl_g[2])
 
+
     def forward(self, img):
         batch_size = img.size(0)
         img_feats = self.nn_encoder(img)
@@ -105,13 +106,7 @@ class Pixel2MeshModel(nn.Module):
         # after deformation 3
         x3 = self.gconv(x3)
 
-        if self.nn_decoder is not None:
-            reconst = self.nn_decoder(img_feats)
-        else:
-            reconst = None
-
         return {
             "pred_coord": [x1, x2, x3],
             "pred_coord_before_deform": [init_pts, x1_up, x2_up],
-            "reconst": reconst
         }
