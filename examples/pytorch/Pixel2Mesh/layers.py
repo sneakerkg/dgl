@@ -2,19 +2,13 @@ import math
 
 import torch
 import torch.nn as nn
-from torch.nn import init
+from torch.nn import init, Threshold
 
 from dgl.base import DGLError
 import dgl.function as fn
 
-from utils.tensor import dot
 import dgl
 import dgl.nn as dgl_nn
-
-'''
-Part of the code are adapted from
-https://github.com/noahcao/Pixel2Mesh
-'''
 
 # pylint: disable=W0235
 class GraphConv_Customized(nn.Module):
@@ -28,7 +22,7 @@ class GraphConv_Customized(nn.Module):
         super(GraphConv_Customized, self).__init__()
         if norm not in ('none', 'both', 'left', 'right', 'chebmat'):
             raise DGLError('Invalid norm value. Must be either "none", "both" or "right".'
-                           ' But got "{}".'.format(norm))
+                           ' But got "{}".'.forma=t(norm))
         self._in_feats = in_feats
         self._out_feats = out_feats
         self._norm = norm
@@ -152,7 +146,7 @@ class GCNLayer(nn.Module):
     """
 
     def __init__(self, in_features, out_features, dgl_g, bias=True):
-        super(GConv, self).__init__()
+        super(GCNLayer, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
 

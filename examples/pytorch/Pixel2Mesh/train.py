@@ -5,9 +5,9 @@ import argparse
 import numpy as np
 import torch
 
+from mesh_utils import Ellipsoid
 from dataset import ShapeNetDataset, get_shapenet_collate
-#from options import update_options, options, reset_options
-
+from models import Pixel2MeshModel
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Pixel2Mesh Training')
@@ -25,6 +25,7 @@ def parse_args():
     parser.add_argument('--hidden-dim', help='gcn hidden layer dimension', type=int, default=192)
     parser.add_argument('--last-hidden-dim', help='last gcn hidden layer dimension', type=int, default=192)
     parser.add_argument('--coord-dim', help='coordinate dimension', type=int, default=3)
+    parser.add_argument('--pretrained-backbone', help='pretrained backbone path', type=str, default=None)
 
     args = parser.parse_args()
     return args
@@ -50,10 +51,10 @@ def main():
                                                shuffle=False)
 
     # Create model
-    mesh_file = os.path.join(args.dataset_dir, 'ellipsoid/info_ellipsoid.dat')
+    mesh_file = os.path.join(args.dataset_dir, '../ellipsoid/info_ellipsoid.dat')
     ellipsoid = Ellipsoid(mesh_file)
 
-    model = Pixel2MeshModel(args.hidden_dim, args.last_hidden_dim, args.coord_dim, ellipsoid)
+    model = Pixel2MeshModel(args.hidden_dim, args.last_hidden_dim, args.coord_dim, ellipsoid, pretrained_backbone=args.pretrained_backbone)
 
     print (model)
 

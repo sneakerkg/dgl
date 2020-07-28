@@ -1,14 +1,11 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 import torchvision.models as models
 
-from layers import GCNLayer, GUnpooling
-
-'''
-Part of the code are adapted from
-https://github.com/noahcao/Pixel2Mesh
-'''
+from backbones import resnet50
+from layers import GCNLayer, GUnpooling, GProjection
 
 class GResNet(nn.Module):
     def __init__(self, in_feature, hidden_dim, graph, activation=None):
@@ -35,12 +32,13 @@ class MeshBlock(nn.Module):
         resblock_layers = [GResNet(in_feature=hidden_dim, hidden_dim=hidden_dim, graph=graph, activation=activation)
                            for _ in range(num_blocks)]
         self.blocks = nn.Sequential(*resblock_layers)
-        self.conv1 = GCNLayer(in_features=in_feature, out_features=hidden_dim, graph=graph)
-        self.conv2 = GCNLayer(in_features=hidden_dim, out_features=out_feature, graph=graph)
+        self.conv1 = GCNLayer(in_features=in_feature, out_features=hidden_dim, dgl_g=graph)
+        self.conv2 = GCNLayer(in_features=hidden_dim, out_features=out_feature, dgl_g=graph)
         self.activation = F.relu if activation else None
 
 class Pixel2MeshModel(nn.Module):
-    def __init__(self, hidden_dim, last_hidden_dim, coord_dim, ellipsoid, camera_f=[248, 248], camera_c=[111.5, 111.5], mesh_pos=[0.0, 0.0, -0.8], gconv_activation=True):
+    def __init__(self, hidden_dim, last_hidden_dim, coord_dim, ellipsoid, pretrained_backbone=None, camera_f=[248, 248], camera_c=[111.5, 111.5], mesh_pos=[0.0, 0.0, -0.8], gconv_activation=True):
+        super(Pixel2MeshModel, self).__init__()
         self.hidden_dim = hidden_dim
         self.coord_dim = coord_dim
         self.last_hidden_dim = last_hidden_dim
@@ -48,28 +46,27 @@ class Pixel2MeshModel(nn.Module):
         self.gconv_activation = gconv_activation
 
         # perpare the image side backbone
-        # NOTE: how to use this? What if we load from ckpt?
-        self.img_backbone = models.resnet50(pretrained=True)
+        # NOTE: we may have to use their pre-trained ckpt
+        self.img_backbone = resnet50(pretrained_backbone=pretrained_backbone)
         self.features_dim = self.img_backbone.features_dim + self.coord_dim
 
         # GCN for meshes
         self.mesh_backbone = nn.ModuleList([
             MeshBlock(6, self.features_dim, self.hidden_dim, self.coord_dim,
-                        ellipsoid.dgl_graph[0], activation=self.gconv_activation),
+                        ellipsoid.dgl_g[0], activation=self.gconv_activation),
             MeshBlock(6, self.features_dim + self.hidden_dim, self.hidden_dim, self.coord_dim,
-                        ellipsoid.dgl_graph[1], activation=self.gconv_activation),
+                        ellipsoid.dgl_g[1], activation=self.gconv_activation),
             MeshBlock(6, self.features_dim + self.hidden_dim, self.hidden_dim, self.last_hidden_dim,
-                        ellipsoid.dgl_graph[2], activation=self.gconv_activation)
+                        ellipsoid.dgl_g[2], activation=self.gconv_activation)
         ])
 
         # Graph Unpooling
         self.unpooling_layers = nn.ModuleList([
-            GraphUnpooling(ellipsoid.unpool_idx[0]),
-            GraphUnpooling(ellipsoid.unpool_idx[1])
+            GUnpooling(ellipsoid.unpool_idx[0]),
+            GUnpooling(ellipsoid.unpool_idx[1])
         ])
 
-        self.projection = GProjection(mesh_pos, camera_f, camera_c, bound=options.z_threshold,
-                                      tensorflow_compatible=options.align_with_tensorflow)
+        self.projection = GProjection(mesh_pos, camera_f, camera_c, bound=options.z_threshold)
 
         self.gconv = GCNLayer(in_features=self.last_hidden_dim, out_features=self.coord_dim,
                            graph=ellipsoid.dgl_g[2])
