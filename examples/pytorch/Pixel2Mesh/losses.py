@@ -2,13 +2,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.layers.chamfer_wrapper import ChamferDist
-
+from chamfer_wrapper import ChamferDist
 
 class P2MLoss(nn.Module):
-    def __init__(self, options, ellipsoid):
+    # NOTE: maybe not a bad idea for using config file
+    def __init__(self, ellipsoid, chamfer=[1.0, 1.0, 1.0], chamfer_opposite=0.55, constant=1.0, edge=0.1, laplace=0.5, move=0.033, normal=0.0016, reconst=0.0):
         super().__init__()
-        self.options = options
+        self.chamfer_opposite=chamfer_opposite
+        self.constant=constant
+        self.edge=edge
+        self.laplace=laplace
+        self.move=move
+        self.normal=normal
+        self.reconst=reconst
         self.l1_loss = nn.L1Loss(reduction='mean')
         self.l2_loss = nn.MSELoss(reduction='mean')
         self.chamfer_dist = ChamferDist()
@@ -92,8 +98,8 @@ class P2MLoss(nn.Module):
 
         for i in range(3):
             dist1, dist2, idx1, idx2 = self.chamfer_dist(gt_coord, pred_coord[i])
-            chamfer_loss += self.options.weights.chamfer[i] * (torch.mean(dist1) +
-                                                               self.options.weights.chamfer_opposite * torch.mean(dist2))
+            chamfer_loss += self.chamfer[i] * (torch.mean(dist1) +
+                                                               self.chamfer_opposite * torch.mean(dist2))
             normal_loss += self.normal_loss(gt_normal, idx2, pred_coord[i], self.edges[i])
             edge_loss += self.edge_regularization(pred_coord[i], self.edges[i])
             lap, move = self.laplace_regularization(pred_coord_before_deform[i],
@@ -101,13 +107,13 @@ class P2MLoss(nn.Module):
             lap_loss += lap_const[i] * lap
             move_loss += lap_const[i] * move
 
-        loss = chamfer_loss + image_loss * self.options.weights.reconst + \
-               self.options.weights.laplace * lap_loss + \
-               self.options.weights.move * move_loss + \
-               self.options.weights.edge * edge_loss + \
-               self.options.weights.normal * normal_loss
+        loss = chamfer_loss + image_loss * self.reconst + \
+               self.laplace * lap_loss + \
+               self.move * move_loss + \
+               self.edge * edge_loss + \
+               self.normal * normal_loss
 
-        loss = loss * self.options.weights.constant
+        loss = loss * self.constant
 
         return loss, {
             "loss": loss,

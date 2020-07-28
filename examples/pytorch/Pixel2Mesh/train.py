@@ -5,9 +5,11 @@ import argparse
 import numpy as np
 import torch
 
+from losses import P2MLoss
 from mesh_utils import Ellipsoid
-from dataset import ShapeNetDataset, get_shapenet_collate
 from models import Pixel2MeshModel
+from dataset import ShapeNetDataset, get_shapenet_collate
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Pixel2Mesh Training')
@@ -56,12 +58,11 @@ def main():
 
     model = Pixel2MeshModel(args.hidden_dim, args.last_hidden_dim, args.coord_dim, ellipsoid, pretrained_backbone=args.pretrained_backbone)
 
-    print (model)
+    # Create loss
+    loss = P2MLoss(ellipsoid)
+    print (loss)
 
     exit (0)
-
-    # Create loss
-    loss = P2MLoss(option, eclipse)
 
     # Training Loop
     for epoch in range(args.num_epochs):

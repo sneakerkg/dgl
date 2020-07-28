@@ -22,7 +22,7 @@ class GraphConv_Customized(nn.Module):
         super(GraphConv_Customized, self).__init__()
         if norm not in ('none', 'both', 'left', 'right', 'chebmat'):
             raise DGLError('Invalid norm value. Must be either "none", "both" or "right".'
-                           ' But got "{}".'.forma=t(norm))
+                           ' But got "{}".'.format(norm))
         self._in_feats = in_feats
         self._out_feats = out_feats
         self._norm = norm

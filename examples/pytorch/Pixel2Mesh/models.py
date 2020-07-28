@@ -66,10 +66,10 @@ class Pixel2MeshModel(nn.Module):
             GUnpooling(ellipsoid.unpool_idx[1])
         ])
 
-        self.projection = GProjection(mesh_pos, camera_f, camera_c, bound=options.z_threshold)
+        self.projection = GProjection(mesh_pos, camera_f, camera_c)
 
         self.gconv = GCNLayer(in_features=self.last_hidden_dim, out_features=self.coord_dim,
-                           graph=ellipsoid.dgl_g[2])
+                           dgl_g=ellipsoid.dgl_g[2])
 
 
     def forward(self, img):
