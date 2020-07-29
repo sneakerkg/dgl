@@ -6,6 +6,7 @@ import numpy as np
 import torch
 
 from losses import P2MLoss
+from evaluator import Evaluator
 from mesh_utils import Ellipsoid
 from models import Pixel2MeshModel
 from dataset import ShapeNetDataset, get_shapenet_collate
@@ -60,9 +61,29 @@ def main():
 
     # Create loss
     loss = P2MLoss(ellipsoid)
-    print (loss)
 
-    exit (0)
+    # Params should be put into yml
+    adam_beta1 = 0.9
+    lr = 0.0001
+    lr_factor = 0.3
+    lr_step = [30, 70, 90]
+    name = adam
+    sgd_momentum = 0.9
+    wd = 1.0e-06
+
+    # Create optimizer
+    optimizer = torch.optim.Adam(
+        params=list(model.parameters()),
+        lr=lr,
+        betas=(adam_beta1, 0.999),
+        weight_decay=wd
+    )
+    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, lr_step, lr_factor
+    )
+
+    # Create evaluator
+    evaluator = Evaluator()
 
     # Training Loop
     for epoch in range(args.num_epochs):
@@ -80,7 +101,7 @@ def main():
             if (epoch + 1) % args.model_save_freq == 0:
                 torch.save(net.state_dict(), model_filename)
         # eval
-        for data in train_loader:
+        for data in test_loader:
             opt.zero_grad()
             out = model(data)
             loss = loss(out, data)
