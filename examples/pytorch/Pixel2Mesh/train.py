@@ -30,9 +30,32 @@ def parse_args():
     parser.add_argument('--coord-dim', help='coordinate dimension', type=int, default=3)
     parser.add_argument('--pretrained-backbone', help='pretrained backbone path', type=str, default=None)
 
+    # log and eval
+    parser.add_argument('--ckpt-freq', help='checkpoint frequency', type=int, default=10)
+    parser.add_argument('--train-summary-freq', help='train summary frequency', type=int, default=100)
+    parser.add_argument('--test-summary-freq', help='test summary frequency', type=int, default=100)
+
     args = parser.parse_args()
     return args
 
+def write_summary(pred, gt, loss_summary, logger, writer, phase, epoch, epoch_iter, global_iter_num):
+        # Save results in Tensorboard
+        for k, v in loss_summary.items():
+            writer.add_scalar("%s, %s"%(phase, k), v, global_iter_num)
+
+        # Save results to log
+        log_info = "%s Epoch %d, Step %d "%(phase, epoch, epoch_iter)
+        for k, v in loss_summary.items():
+            log_info += "%s %f, " % (k, v)
+        self.logger.info(log_info)
+
+def write_result_summary(logger, writter, evaluator):
+    for key, val in evaluator.get_result_summary().items():
+        scalar = val
+        if isinstance(val, AverageMeter):
+            scalar = val.avg
+        self.logger.info("Test [%06d] %s: %.6f" % (self.total_step_count, key, scalar))
+        self.summary_writer.add_scalar("eval_" + key, scalar, self.total_step_count + 1)
 
 def main():
     args = parse_args()
@@ -86,32 +109,48 @@ def main():
     evaluator = Evaluator()
 
     # Training Loop
+    global_iter_num = 0
     for epoch in range(args.num_epochs):
         tic = time.time()
         loss_val = 0
-        for data in train_loader:
-            opt.zero_grad()
+        for step, data in enumerate(train_loader):
+            optimizer.zero_grad()
+
+            print (data)
+
             out = model(data)
-            loss = loss(out, data)
+
+            print (out)
+
+            loss, loss_summary = loss(out, data)
+
+            print (loss)
+
             loss.backward()
-            opt.step()
+            optimizer.step()
             scheduler.step()
-            time_diff = time.time() - tic
-            print('Epoch #%d, loss=%f, time=%.6f' % (epoch, loss.sum(), time_diff))
-            if (epoch + 1) % args.model_save_freq == 0:
-                torch.save(net.state_dict(), model_filename)
+
+            global_iter_num += 1
+            if (step + 1) % args.train_summary_freq == 0:
+                write_summary(out, data, loss_summary, logger, writer, 'Train', epoch, step, global_iter_num)
+
+        if (epoch + 1) % args.ckpt_freq == 0:
+            torch.save(net.state_dict(), model_filename)
+        time_diff = time.time() - tic
+
         # eval
-        for data in test_loader:
-            opt.zero_grad()
-            out = model(data)
-            loss = loss(out, data)
-            loss.backward()
-            opt.step()
-            scheduler.step()
-            time_diff = time.time() - tic
-            print('Epoch #%d, loss=%f, time=%.6f' % (epoch, loss.sum(), time_diff))
-            if (epoch + 1) % args.model_save_freq == 0:
-                torch.save(net.state_dict(), model_filename)
+        evaluator = Evaluator(num_class)
+        model.eval()
+        with torch.no_grad():
+            for step, data in enumerate(test_loader):
+                out = model(data)
+                loss, loss_summary = loss(out, data)
+                evaluator.evaluate_chamfer_and_f1(out, data, data["labels"])
+                if (step + 1) % args.test_summary_freq == 0:
+                    write_summary(out, data, loss_summary, logger, writer, 'Test', epoch, step, global_iter_num)
+        write_result_summary(logger, writter, evaluator)
+        model.train()
+
 
 if __name__ == "__main__":
     np.random.seed(1234)
