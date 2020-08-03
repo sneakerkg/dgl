@@ -4,12 +4,10 @@ from collections import Iterable
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 
-from models.layers.chamfer_wrapper import ChamferDist
-from utils.average_meter import AverageMeter
-from utils.mesh import Ellipsoid
-from utils.vis.renderer import MeshRenderer
+from chamfer_wrapper import ChamferDist
+from mesh_utils import Ellipsoid
+#from utils.vis.renderer import MeshRenderer
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""

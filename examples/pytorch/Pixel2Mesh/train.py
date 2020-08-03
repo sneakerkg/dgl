@@ -4,11 +4,13 @@ import argparse
 
 import numpy as np
 import torch
+from tensorboardX import SummaryWriter
 
 from losses import P2MLoss
 from evaluator import Evaluator
 from mesh_utils import Ellipsoid
 from models import Pixel2MeshModel
+from utils import create_logger
 from dataset import ShapeNetDataset, get_shapenet_collate
 
 
@@ -18,9 +20,7 @@ def parse_args():
 
     # training
     parser.add_argument('--batch-size', help='batch size', type=int, default=32)
-    parser.add_argument('--checkpoint', help='checkpoint file', type=str)
     parser.add_argument('--dataset-dir', help='dataset directory', type=str)
-    parser.add_argument('--ckpt-dir', help='checkpoint directory', type=str)
     parser.add_argument('--num-workers', help='number of workers', type=int, default=0)
     parser.add_argument('--num-epochs', help='number of epochs', type=int)
 
@@ -31,6 +31,7 @@ def parse_args():
     parser.add_argument('--pretrained-backbone', help='pretrained backbone path', type=str, default=None)
 
     # log and eval
+    parser.add_argument('--log-dir', help='checkpoint directory', type=str)
     parser.add_argument('--ckpt-freq', help='checkpoint frequency', type=int, default=10)
     parser.add_argument('--train-summary-freq', help='train summary frequency', type=int, default=100)
     parser.add_argument('--test-summary-freq', help='test summary frequency', type=int, default=100)
@@ -90,7 +91,7 @@ def main():
     lr = 0.0001
     lr_factor = 0.3
     lr_step = [30, 70, 90]
-    name = adam
+    name = 'adam'
     sgd_momentum = 0.9
     wd = 1.0e-06
 
@@ -106,7 +107,16 @@ def main():
     )
 
     # Create evaluator
-    evaluator = Evaluator()
+    num_class = len(train_set.id_name_map)
+    evaluator = Evaluator(num_class)
+
+    # Create logger and writer
+    os.makedirs(args.log_dir, exist_ok=True)
+    logger = create_logger(args.log_dir, log_level='info')
+    writer = SummaryWriter(args.log_dir)
+
+
+    exit(0)
 
     # Training Loop
     global_iter_num = 0
