@@ -26,7 +26,6 @@ class ShapeNetDataset(Dataset):
         self.id_name_map = {k: i for i, k in enumerate(self.id_name_map)}
 
         # Read file list
-        print (file_list_path)
         with open(file_list_path, "r") as fp:
             lines = fp.readlines()
             self.file_names = [line.strip() for line in lines]
@@ -99,6 +98,7 @@ def get_shapenet_collate(num_points):
         ret = default_collate(batch)
         ret["points_orig"] = ret["points"]
         ret["normals_orig"] = ret["normals"]
+        print (ret.keys())
         return ret
 
     return shapenet_collate

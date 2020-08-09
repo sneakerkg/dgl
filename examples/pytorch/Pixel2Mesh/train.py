@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 import argparse
 
 import numpy as np
@@ -22,7 +23,10 @@ def parse_args():
     parser.add_argument('--batch-size', help='batch size', type=int, default=32)
     parser.add_argument('--dataset-dir', help='dataset directory', type=str)
     parser.add_argument('--num-workers', help='number of workers', type=int, default=0)
-    parser.add_argument('--num-epochs', help='number of epochs', type=int)
+    parser.add_argument('--num-epochs', help='number of epochs', type=int, default=100)
+
+    # dataset param
+    parser.add_argument('--num-points', help='num points to sample from shapenet data', type=int, default=9000)
 
     # model param
     parser.add_argument('--hidden-dim', help='gcn hidden layer dimension', type=int, default=192)
@@ -67,14 +71,14 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_set,
                                                batch_size=args.batch_size,
                                                num_workers=args.num_workers,
-                                               collate_fn=get_shapenet_collate,
+                                               collate_fn=get_shapenet_collate(args.num_points),
                                                shuffle=True)
     test_file_list_path = os.path.join(args.dataset_dir, 'meta/test_tf.txt')
     test_set = ShapeNetDataset(args.dataset_dir, test_file_list_path)
     test_loader = torch.utils.data.DataLoader(test_set,
                                                batch_size=args.batch_size,
                                                num_workers=args.num_workers,
-                                               collate_fn=get_shapenet_collate,
+                                               collate_fn=get_shapenet_collate(args.num_points),
                                                shuffle=False)
 
     # Create model
@@ -114,9 +118,6 @@ def main():
     os.makedirs(args.log_dir, exist_ok=True)
     logger = create_logger(args.log_dir, log_level='info')
     writer = SummaryWriter(args.log_dir)
-
-
-    exit(0)
 
     # Training Loop
     global_iter_num = 0
