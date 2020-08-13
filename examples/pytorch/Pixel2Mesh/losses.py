@@ -8,6 +8,7 @@ class P2MLoss(nn.Module):
     # NOTE: maybe not a bad idea for using config file
     def __init__(self, ellipsoid, chamfer=[1.0, 1.0, 1.0], chamfer_opposite=0.55, constant=1.0, edge=0.1, laplace=0.5, move=0.033, normal=0.0016, reconst=0.0):
         super().__init__()
+        self.chamfer=chamfer
         self.chamfer_opposite=chamfer_opposite
         self.constant=constant
         self.edge=edge
@@ -73,6 +74,11 @@ class P2MLoss(nn.Module):
 
     def normal_loss(self, gt_normal, indices, pred_points, adj_list):
         edges = F.normalize(pred_points[:, adj_list[:, 0]] - pred_points[:, adj_list[:, 1]], dim=2)
+
+        print (gt_normal.shape)
+
+        print (indices.shape)
+
         nearest_normals = torch.stack([t[i] for t, i in zip(gt_normal, indices.long())])
         normals = F.normalize(nearest_normals[:, adj_list[:, 0]], dim=2)
         cosine = torch.abs(torch.sum(edges * normals, 2))

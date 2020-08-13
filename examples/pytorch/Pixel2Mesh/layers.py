@@ -1,7 +1,9 @@
 import math
+import numpy as np
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn import init, Threshold
 
 from dgl.base import DGLError
@@ -248,20 +250,13 @@ class GProjection(nn.Module):
         w = -self.camera_f[0] * (positions[:, :, 0] / self.bound_val(positions[:, :, 2])) + camera_c_offset[0]
         h = self.camera_f[1] * (positions[:, :, 1] / self.bound_val(positions[:, :, 2])) + camera_c_offset[1]
 
-        if self.tensorflow_compatible:
-            # to align with tensorflow
-            # this is incorrect, I believe
-            w += half_resolution[0]
-            h += half_resolution[1]
+        # directly do clamping
+        w /= half_resolution[0]
+        h /= half_resolution[1]
 
-        else:
-            # directly do clamping
-            w /= half_resolution[0]
-            h /= half_resolution[1]
-
-            # clamp to [-1, 1]
-            w = torch.clamp(w, min=-1, max=1)
-            h = torch.clamp(h, min=-1, max=1)
+        # clamp to [-1, 1]
+        w = torch.clamp(w, min=-1, max=1)
+        h = torch.clamp(h, min=-1, max=1)
 
         feats = [inputs]
         for img_feature in img_features:
@@ -278,14 +273,7 @@ class GProjection(nn.Module):
         :param sample_points: [batch_size x num_points x 2], in range [-1, 1]
         :return: [batch_size x num_points x feat_dim]
         """
-        if self.tensorflow_compatible:
-            feature_shape = self.image_feature_shape(img_feat)
-            points_w = sample_points[:, :, 0] / (img_shape[0] / feature_shape[0])
-            points_h = sample_points[:, :, 1] / (img_shape[1] / feature_shape[1])
-            output = torch.stack([self.project_tensorflow(points_h[i], points_w[i],
-                                                          feature_shape, img_feat[i]) for i in range(img_feat.size(0))], 0)
-        else:
-            output = F.grid_sample(img_feat, sample_points.unsqueeze(1))
-            output = torch.transpose(output.squeeze(2), 1, 2)
+        output = F.grid_sample(img_feat, sample_points.unsqueeze(1))
+        output = torch.transpose(output.squeeze(2), 1, 2)
 
         return output

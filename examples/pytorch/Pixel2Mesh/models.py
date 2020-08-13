@@ -36,6 +36,15 @@ class MeshBlock(nn.Module):
         self.conv2 = GCNLayer(in_features=hidden_dim, out_features=out_feature, dgl_g=graph)
         self.activation = F.relu if activation else None
 
+    def forward(self, inputs):
+        x = self.conv1(inputs)
+        if self.activation:
+            x = self.activation(x)
+        x_hidden = self.blocks(x)
+        x_out = self.conv2(x_hidden)
+
+        return x_out, x_hidden
+
 class Pixel2MeshModel(nn.Module):
     def __init__(self, hidden_dim, last_hidden_dim, coord_dim, ellipsoid, pretrained_backbone=None, camera_f=[248, 248], camera_c=[111.5, 111.5], mesh_pos=[0.0, 0.0, -0.8], gconv_activation=True):
         super(Pixel2MeshModel, self).__init__()
@@ -72,32 +81,33 @@ class Pixel2MeshModel(nn.Module):
                            dgl_g=ellipsoid.dgl_g[2])
 
 
-    def forward(self, img):
+    def forward(self, batch):
+        img = batch['images']
         batch_size = img.size(0)
-        img_feats = self.nn_encoder(img)
+        img_feats = self.img_backbone(img)
         img_shape = self.projection.image_feature_shape(img)
 
         init_pts = self.init_pts.data.unsqueeze(0).expand(batch_size, -1, -1)
         # GCN Block 1
         x = self.projection(img_shape, img_feats, init_pts)
-        x1, x_hidden = self.gcns[0](x)
+        x1, x_hidden = self.mesh_backbone[0](x)
 
         # before deformation 2
-        x1_up = self.unpooling[0](x1)
+        x1_up = self.unpooling_layers[0](x1)
 
         # GCN Block 2
         x = self.projection(img_shape, img_feats, x1)
-        x = self.unpooling[0](torch.cat([x, x_hidden], 2))
+        x = self.unpooling_layers[0](torch.cat([x, x_hidden], 2))
         # after deformation 2
-        x2, x_hidden = self.gcns[1](x)
+        x2, x_hidden = self.mesh_backbone[1](x)
 
         # before deformation 3
-        x2_up = self.unpooling[1](x2)
+        x2_up = self.unpooling_layers[1](x2)
 
         # GCN Block 3
         x = self.projection(img_shape, img_feats, x2)
-        x = self.unpooling[1](torch.cat([x, x_hidden], 2))
-        x3, _ = self.gcns[2](x)
+        x = self.unpooling_layers[1](torch.cat([x, x_hidden], 2))
+        x3, _ = self.mesh_backbone[2](x)
         if self.gconv_activation:
             x3 = F.relu(x3)
         # after deformation 3

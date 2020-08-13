@@ -126,20 +126,15 @@ def main():
         loss_val = 0
         for step, data in enumerate(train_loader):
             optimizer.zero_grad()
-
-            print (data)
-
             out = model(data)
-
-            print (out)
-
             loss, loss_summary = loss(out, data)
 
             print (loss)
+            exit(0)
 
             loss.backward()
             optimizer.step()
-            scheduler.step()
+            lr_scheduler.step()
 
             global_iter_num += 1
             if (step + 1) % args.train_summary_freq == 0:
