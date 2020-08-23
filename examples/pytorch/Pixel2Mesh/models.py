@@ -82,7 +82,7 @@ class Pixel2MeshModel(nn.Module):
 
 
     def forward(self, batch):
-        img = batch['images']
+        img = batch['images'].to('cuda')
         batch_size = img.size(0)
         img_feats = self.img_backbone(img)
         img_shape = self.projection.image_feature_shape(img)

@@ -98,7 +98,6 @@ def get_shapenet_collate(num_points):
         ret = default_collate(batch)
         ret["points_orig"] = ret["points"]
         ret["normals_orig"] = ret["normals"]
-        print (ret.keys())
         return ret
 
     return shapenet_collate

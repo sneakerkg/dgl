@@ -170,7 +170,7 @@ class GCNLayer(nn.Module):
         support_loop = torch.matmul(inputs, self.loop_weight)
         batch_size = inputs.shape[0]
         fea_dim = inputs.shape[-1]
-        batch_dgl_g = dgl.batch([self.dgl_g for k in range(batch_size)])
+        batch_dgl_g = dgl.batch([self.dgl_g for k in range(batch_size)]).to("cuda")
         gcn_res = self.gconv(batch_dgl_g, inputs.view(-1, fea_dim)).reshape(support_loop.shape)
         output = gcn_res + support_loop
         if self.bias is not None:

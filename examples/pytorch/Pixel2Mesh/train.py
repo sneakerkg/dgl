@@ -20,7 +20,7 @@ def parse_args():
     #parser.add_argument('--options', help='experiment options file name', required=False, type=str)
 
     # training
-    parser.add_argument('--batch-size', help='batch size', type=int, default=32)
+    parser.add_argument('--batch-size', help='batch size', type=int, default=8)
     parser.add_argument('--dataset-dir', help='dataset directory', type=str)
     parser.add_argument('--num-workers', help='number of workers', type=int, default=0)
     parser.add_argument('--num-epochs', help='number of epochs', type=int, default=100)
@@ -85,7 +85,7 @@ def main():
     mesh_file = os.path.join(args.dataset_dir, '../ellipsoid/info_ellipsoid.dat')
     ellipsoid = Ellipsoid(mesh_file)
 
-    model = Pixel2MeshModel(args.hidden_dim, args.last_hidden_dim, args.coord_dim, ellipsoid, pretrained_backbone=args.pretrained_backbone)
+    model = Pixel2MeshModel(args.hidden_dim, args.last_hidden_dim, args.coord_dim, ellipsoid, pretrained_backbone=args.pretrained_backbone).to("cuda")
 
     # Create loss
     loss = P2MLoss(ellipsoid)

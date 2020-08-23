@@ -43,6 +43,8 @@ class P2MLoss(nn.Module):
         The laplacian coordinates of input with respect to edges as in lap_idx
         """
 
+        lap_idx = lap_idx.to('cuda')
+
         indices = lap_idx[:, :-2]
         invalid_mask = indices < 0
         all_valid_indices = indices.clone()
@@ -50,7 +52,7 @@ class P2MLoss(nn.Module):
 
         vertices = inputs[:, all_valid_indices]
         vertices[:, invalid_mask] = 0
-        neighbor_sum = torch.sum(vertices, 2)
+        neighbor_sum = torch.sum(vertices, 2).to('cuda')
         neighbor_count = lap_idx[:, -1].float()
         laplace = inputs - neighbor_sum / neighbor_count[None, :, None]
 
@@ -74,11 +76,6 @@ class P2MLoss(nn.Module):
 
     def normal_loss(self, gt_normal, indices, pred_points, adj_list):
         edges = F.normalize(pred_points[:, adj_list[:, 0]] - pred_points[:, adj_list[:, 1]], dim=2)
-
-        print (gt_normal.shape)
-
-        print (indices.shape)
-
         nearest_normals = torch.stack([t[i] for t, i in zip(gt_normal, indices.long())])
         normals = F.normalize(nearest_normals[:, adj_list[:, 0]], dim=2)
         cosine = torch.abs(torch.sum(edges * normals, 2))
@@ -98,7 +95,7 @@ class P2MLoss(nn.Module):
         chamfer_loss, edge_loss, normal_loss, lap_loss, move_loss = 0., 0., 0., 0., 0.
         lap_const = [0.2, 1., 1.]
 
-        gt_coord, gt_normal, gt_images = targets["points"], targets["normals"], targets["images"]
+        gt_coord, gt_normal, gt_images = targets["points"].to('cuda'), targets["normals"].to('cuda'), targets["images"].to('cuda')
         pred_coord, pred_coord_before_deform = outputs["pred_coord"], outputs["pred_coord_before_deform"]
         image_loss = 0.
 
